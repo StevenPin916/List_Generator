@@ -1,0 +1,54 @@
+name: Windows
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pruebas:
+    name: Tipos y pruebas
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+  exe:
+    name: Ejecutable de Windows
+    needs: pruebas
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+      - run: npm ci
+      - run: npx tauri build
+      - name: Preparar descargas
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path descargas | Out-Null
+          Copy-Item src-tauri/target/release/bundle/nsis/*.exe descargas/
+          Copy-Item src-tauri/target/release/list-generator.exe "descargas/List Generator (portable).exe"
+          Get-ChildItem descargas
+      - uses: actions/upload-artifact@v4
+        with:
+          name: List-Generator-Windows
+          path: descargas/
+          if-no-files-found: error
