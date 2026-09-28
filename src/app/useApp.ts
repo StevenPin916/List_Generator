@@ -167,6 +167,7 @@ export function useApp(plataforma: Plataforma) {
 
   const editarAlias = useCallback(
     (clave: string, alias: string) => {
+      if (!alias) return; // un alias vacío dejaría la factura sin nombre
       const c = porClave.get(clave) ?? (prefs.alias[clave] && { nombre: prefs.alias[clave].cliente, sucursal: prefs.alias[clave].sucursal });
       if (!c) return;
       guardarPref('alias', { ...prefs.alias, [clave]: { cliente: c.nombre, sucursal: c.sucursal, alias: alias.toUpperCase() } });

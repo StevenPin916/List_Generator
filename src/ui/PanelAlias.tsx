@@ -2,35 +2,74 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppApi } from '../app/contexto';
 import { compararEs, normalizar } from '../domain';
-import { IconoBuscar, IconoCerrar } from './iconos';
+import { IconoBuscar, IconoCerrar, IconoFlecha } from './iconos';
 import { EASE } from './movimiento';
 
-interface Fila { clave: string; cliente: string; sucursal: string; alias: string; nuevo: boolean; hoy: boolean }
+interface Fila { clave: string; cliente: string; sucursal: string; hoy: boolean }
 
 export function PanelAlias({ abierto, onCerrar }: { abierto: boolean; onCerrar: () => void }) {
   const { clientesDelDia, prefs, editarAlias } = useAppApi();
   const [q, setQ] = useState('');
+  const [verRevisados, setVerRevisados] = useState(false);
   const buscador = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!abierto) return;
+    setQ('');
+    setVerRevisados(false);
     const t = setTimeout(() => buscador.current?.focus(), 120);
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && onCerrar();
     window.addEventListener('keydown', esc);
     return () => { clearTimeout(t); window.removeEventListener('keydown', esc); };
   }, [abierto, onCerrar]);
 
-  const filas: Fila[] = useMemo(() => {
-    const hoy = clientesDelDia.map((c) => ({ clave: c.clave, cliente: c.nombre, sucursal: c.sucursal, alias: c.alias, nuevo: c.nuevo, hoy: true }));
+  // Foto del orden y de las secciones al abrir el panel: escribir un alias nunca mueve su fila.
+  // Lo que edites en "Por revisar" pasa a "Revisados" la próxima vez que abras el panel.
+  const foto = useMemo(() => {
+    const hoy: Fila[] = clientesDelDia.map((c) => ({ clave: c.clave, cliente: c.nombre, sucursal: c.sucursal, hoy: true }));
     const vistos = new Set(hoy.map((f) => f.clave));
-    const otros = Object.entries(prefs.alias)
+    const otros: Fila[] = Object.entries(prefs.alias)
       .filter(([k]) => !vistos.has(k))
-      .map(([clave, a]) => ({ clave, cliente: a.cliente, sucursal: a.sucursal, alias: a.alias, nuevo: false, hoy: false }));
-    const nq = normalizar(q);
-    return [...hoy, ...otros]
-      .filter((f) => !nq || normalizar(`${f.cliente} ${f.sucursal} ${f.alias}`).includes(nq))
-      .sort((a, b) => Number(b.nuevo) - Number(a.nuevo) || Number(b.hoy) - Number(a.hoy) || compararEs(a.cliente, b.cliente));
-  }, [clientesDelDia, prefs.alias, q]);
+      .map(([clave, a]) => ({ clave, cliente: a.cliente, sucursal: a.sucursal, hoy: false }));
+    const orden = (a: Fila, b: Fila) => Number(b.hoy) - Number(a.hoy) || compararEs(a.cliente, b.cliente);
+    const nuevos = new Set(clientesDelDia.filter((c) => c.nuevo).map((c) => c.clave));
+    return {
+      porRevisar: hoy.filter((f) => nuevos.has(f.clave)).sort(orden),
+      revisados: [...hoy.filter((f) => !nuevos.has(f.clave)), ...otros].sort(orden),
+    };
+  }, [abierto]);
+
+  // Valores en vivo (el alias que ves siempre es el actual).
+  const aliasActual = (clave: string) =>
+    clientesDelDia.find((c) => c.clave === clave)?.alias ?? prefs.alias[clave]?.alias ?? '';
+  const esSugerido = (clave: string) => !prefs.alias[clave];
+
+  const nq = normalizar(q);
+  const coincide = (f: Fila) => !nq || normalizar(`${f.cliente} ${f.sucursal} ${aliasActual(f.clave)}`).includes(nq);
+  const porRevisar = foto.porRevisar.filter(coincide);
+  const revisados = foto.revisados.filter(coincide);
+  const mostrarRevisados = verRevisados || (!!nq && revisados.length > 0);
+
+  const fila = (f: Fila) => (
+    <div className="arow" key={f.clave}>
+      <div style={{ minWidth: 0 }}>
+        <div className="cn">{f.cliente}</div>
+        <div className="sc">
+          {f.sucursal || 'Sin sucursal'}
+          {esSugerido(f.clave)
+            ? <span className="chip new" style={{ height: 22, fontSize: 12 }}>sugerido</span>
+            : <span className="chip ok" style={{ height: 22, fontSize: 12 }}>guardado</span>}
+          {!f.hoy && <span className="chip" style={{ height: 22, fontSize: 12 }}>no pidió hoy</span>}
+        </div>
+      </div>
+      <input
+        defaultValue={aliasActual(f.clave)}
+        maxLength={14}
+        aria-label={`Alias de ${f.cliente} ${f.sucursal}`}
+        onChange={(e) => editarAlias(f.clave, e.target.value.trim())}
+      />
+    </div>
+  );
 
   return (
     <AnimatePresence>
@@ -59,27 +98,38 @@ export function PanelAlias({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
               </label>
             </div>
             <div className="list">
-              {filas.map((f) => (
-                <div className="arow" key={f.clave}>
-                  <div style={{ minWidth: 0 }}>
-                    <div className="cn">{f.cliente}</div>
-                    <div className="sc">
-                      {f.sucursal || 'Sin sucursal'}
-                      {f.nuevo && <span className="chip new" style={{ height: 22, fontSize: 12 }}>sugerido</span>}
-                      {!f.hoy && <span className="chip" style={{ height: 22, fontSize: 12 }}>no pidió hoy</span>}
-                    </div>
-                  </div>
-                  <input
-                    defaultValue={f.alias}
-                    maxLength={14}
-                    aria-label={`Alias de ${f.cliente} ${f.sucursal}`}
-                    onChange={(e) => editarAlias(f.clave, e.target.value.trim())}
-                  />
-                </div>
-              ))}
-              {!filas.length && <div className="empty-msg">{q ? 'Ningún cliente coincide con la búsqueda.' : 'Todavía no hay alias. Aparecen cuando cargas el archivo de clientes.'}</div>}
+              {foto.porRevisar.length > 0 && <div className="label group-label" style={{ paddingInline: 12 }}>Por revisar · {porRevisar.length}</div>}
+              {porRevisar.map(fila)}
+              {foto.porRevisar.length > 0 && !porRevisar.length && nq && <div className="empty-msg">Ninguno por revisar coincide.</div>}
+
+              {foto.revisados.length > 0 && (
+                <button type="button" className="fold inline" aria-expanded={mostrarRevisados} onClick={() => setVerRevisados((v) => !v)} style={{ marginTop: 8 }}>
+                  <IconoFlecha className="chev" /> Revisados <span className="chip count">{revisados.length}</span>
+                </button>
+              )}
+              <AnimatePresence initial={false}>
+                {mostrarRevisados && (
+                  <motion.div
+                    key="revisados"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.25, ease: EASE }}
+                    style={{ overflow: 'hidden' }}
+                  >
+                    {revisados.map(fila)}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {!foto.porRevisar.length && !foto.revisados.length && (
+                <div className="empty-msg">Todavía no hay alias. Aparecen cuando cargas el archivo de clientes.</div>
+              )}
+              {!foto.porRevisar.length && foto.revisados.length > 0 && !mostrarRevisados && (
+                <div className="empty-msg">Todos los alias están revisados. Ábrelos arriba si necesitas cambiar alguno.</div>
+              )}
             </div>
-            <footer>Se guarda mientras escribes. Los alias sugeridos quedan recordados al guardar la Salida.</footer>
+            <footer>Se guarda mientras escribes. Lo que edites pasa a "Revisados" la próxima vez que abras este panel.</footer>
           </motion.aside>
         </>
       )}
