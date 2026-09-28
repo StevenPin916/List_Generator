@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+*.log
+.DS_Store
+.vite/
+src-tauri/target/
+src-tauri/gen/schemas/
+# Datos reales de clientes: nunca al repo
+private/
+*.local.xlsx
