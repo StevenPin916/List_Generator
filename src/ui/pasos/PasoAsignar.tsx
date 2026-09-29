@@ -8,7 +8,7 @@ import { IconoBuscar, IconoFlecha, IconoLapiz } from '../iconos';
 import { EASE, NumeroAnimado } from '../movimiento';
 
 export function PasoAsignar() {
-  const { facturas, pendientes, sesion, seleccionar, deshacer, ir, todoAsignado } = useAppApi();
+  const { facturas, pendientes, sesion, nombres, seleccionar, deshacer, ir, todoAsignado } = useAppApi();
   const [verAsignadas, setVerAsignadas] = useState(false);
   const asignadas = facturas.filter((f) => sesion.asignaciones.has(f.id));
   const actual = facturas.find((f) => f.id === sesion.seleccion) ?? null;
@@ -85,7 +85,9 @@ export function PasoAsignar() {
             <IconoFlecha className="chev" /> Asignadas <span className="chip count">{asignadas.length}</span>
           </button>
           <AnimatePresence initial={false}>
-            {verAsignadas && asignadas.map((f) => <FilaAsignada key={f.id} factura={f} />)}
+            {verAsignadas && asignadas.map((f) => (
+              <FilaAsignada key={f.id} factura={f} asignacion={sesion.asignaciones.get(f.id)!} nombre={nombres.get(f.id) ?? ''} />
+            ))}
           </AnimatePresence>
         </div>
 
@@ -128,9 +130,10 @@ export function PasoAsignar() {
   );
 }
 
-function FilaAsignada({ factura }: { factura: Factura }) {
-  const { sesion, nombres, asignar, seleccionar } = useAppApi();
-  const a = sesion.asignaciones.get(factura.id)!;
+// La asignación y el nombre llegan como props: mientras la fila anima su salida (al deshacer)
+// conserva los últimos valores y nunca lee una asignación que ya no existe.
+function FilaAsignada({ factura, asignacion, nombre }: { factura: Factura; asignacion: Asignacion; nombre: string }) {
+  const { sesion, asignar, seleccionar } = useAppApi();
   return (
     <motion.div
       className="done-row"
@@ -142,7 +145,7 @@ function FilaAsignada({ factura }: { factura: Factura }) {
       transition={{ duration: 0.25, ease: EASE }}
     >
       <button type="button" className="id" title="Cambiar el cliente de esta factura" onClick={() => seleccionar(factura.id)}>{factura.id}</button>
-      <span className={`name ${a.tipo === 'personalizado' ? 'custom' : ''}`}>{nombres.get(factura.id)}</span>
+      <span className={`name ${asignacion.tipo === 'personalizado' ? 'custom' : ''}`}>{nombre}</span>
       <button className="btn ghost sm" type="button" onClick={() => asignar(factura.id, null)}>Deshacer</button>
     </motion.div>
   );
