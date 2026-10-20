@@ -67,6 +67,31 @@ export async function libroVentas(opciones: { conCliente?: boolean } = {}): Prom
   return aBytes(wb);
 }
 
+/**
+ * Reporte "Ventas Por Documento": una fila por factura con su cliente. Escribe el documento
+ * pegado ("FV FE200") como lo exporta el ERP, la sucursal con su código ("2 NORTE"),
+ * y deja la cotización COT 100 por fuera, como pasa en el ERP.
+ */
+export async function libroDocumentos(): Promise<Uint8Array> {
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('ExportarAExcel');
+  ws.addRow(['DISTRIBUIDORA EJEMPLO SAS']);
+  ws.addRow(['Ventas Por Documento entre 28/09/2026 Y 28/09/2026']);
+  ws.mergeCells('A1:K1');
+  ws.mergeCells('A2:K2');
+  ws.addRow([]);
+  ws.addRow(['CC/Nit', 'Cliente', 'Sucursal', 'Fecha', 'Documento', 'Venta Bruta', 'Descuento', 'Venta Neta', 'Otros Imp', 'IVA', 'Valor Total']);
+  const filas: [string, string, string | null, string][] = [
+    ['900000001', 'RESTAURANTE EL FOGON SAS', null, 'FV FE200'],
+    ['900000002', 'HOTEL CENTRAL SAS', '2 NORTE', 'FV FE201'],
+    ['900000002', 'HOTEL CENTRAL SAS', '1 CENTRO INTERNACIONAL', 'FV FE202'],
+    ['900000001', 'RESTAURANTE EL FOGON SAS', null, 'FV FE205'],
+  ];
+  for (const [nit, cli, suc, doc] of filas) ws.addRow([nit, cli, suc, new Date('2026-09-28'), doc, 1, 0, 1, 0, 0, 1]);
+  ws.addRow(['TOTAL GENERAL', null, null, null, null, 4, 0, 4, 0, 0, 4]);
+  return aBytes(wb);
+}
+
 export async function libroDesconocido(): Promise<Uint8Array> {
   const wb = new ExcelJS.Workbook();
   wb.addWorksheet('Hoja1').addRow(['Nombre', 'Edad']);

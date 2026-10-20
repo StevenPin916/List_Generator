@@ -121,18 +121,8 @@ export function useApp(plataforma: Plataforma) {
       for (const f of excels) {
         try {
           const datos = await leerArchivo(f.name, await f.arrayBuffer());
-          if (datos.tipo === 'ventas') {
-            const fs = agruparFacturas(datos.lineas);
-            const erp = new Map<string, Asignacion>();
-            for (const x of fs) {
-              if (x.clienteDelERP) erp.set(x.id, { tipo: 'cliente', clave: claveCliente(x.clienteDelERP.nombre, x.clienteDelERP.sucursal) });
-            }
-            despachar({ tipo: 'cargar', datos, asignacionesERP: erp, primera: fs.find((x) => !erp.has(x.id))?.id ?? null });
-            leidos.push('ventas');
-          } else {
-            despachar({ tipo: 'cargar', datos, primera: null });
-            leidos.push('clientes');
-          }
+          despachar({ tipo: 'cargar', datos });
+          leidos.push(datos.tipo === 'ventas' ? 'productos' : datos.documentos ? 'facturas por cliente' : 'clientes');
         } catch (e) {
           avisar({ texto: e instanceof Error ? e.message : 'No se pudo leer el archivo.', tono: 'error', duracion: 6000 });
         }

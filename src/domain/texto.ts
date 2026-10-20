@@ -13,6 +13,11 @@ export function claveCliente(nombre: string, sucursal: string): string {
   return `${normalizar(nombre)}|${normalizar(sucursal)}`;
 }
 
+/** "FV FE26580" y "FV FE 26580" son la misma factura en los dos reportes del ERP. */
+export function claveDocumento(documento: string): string {
+  return normalizar(documento).replace(/ /g, '');
+}
+
 /** "08 AGRAZ" → "AGRAZ". Respeta los espacios internos ("PIMENTON  ROJO"). */
 export function quitarCodigo(descripcion: string): string {
   return String(descripcion).replace(/^\s*\d+\s+/, '').trim();
