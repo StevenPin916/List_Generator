@@ -7,7 +7,7 @@ import { IconoSubir } from '../iconos';
 import { CheckDibujado, EASE } from '../movimiento';
 
 export function PasoCargar({ onAbrirSelector }: { onAbrirSelector: () => void }) {
-  const { sesion, cargarArchivos, archivosListos, todoAsignado, ir, clientesDelDia } = useAppApi();
+  const { sesion, cargarArchivos, archivosListos, todoAsignado, ir, clientesDelDia, facturas, pendientes } = useAppApi();
   const { clientes, ventas } = sesion;
   const [arrastrando, setArrastrando] = useState(false);
 
@@ -56,11 +56,13 @@ export function PasoCargar({ onAbrirSelector }: { onAbrirSelector: () => void })
     tarjetaClientes = (
       <>
         <div className="stats">
+          {clientes.documentos && <Dato v={clientes.documentos.length} l="facturas" />}
           <Dato v={clientes.clientes.length} l="clientes y sucursales" />
           <Dato v={clientesDelDia.length - nuevos} l="con alias recordado" />
         </div>
         <div className="foot">
           {clientes.fecha && <span className="chip">{clientes.fecha}</span>}
+          {clientes.documentos && <span className="chip ok">Dice de quién es cada factura</span>}
           {nuevos > 0
             ? <span className="chip new">{plural(nuevos, 'cliente nuevo', 'clientes nuevos')}, alias sugerido</span>
             : <span className="chip ok"><span className="dot" />Todos los alias recordados</span>}
@@ -93,7 +95,7 @@ export function PasoCargar({ onAbrirSelector }: { onAbrirSelector: () => void })
           <>
             <div>
               <h2>Carga los dos Excel del día</h2>
-              <p className="sub">Suéltalos juntos. La app reconoce sola cuál es el de clientes y cuál el de ventas.</p>
+              <p className="sub">Suéltalos juntos: el de productos por documento y el de ventas por documento (factura y cliente). La app reconoce sola cuál es cuál.</p>
             </div>
             <motion.button
               type="button"
@@ -110,15 +112,19 @@ export function PasoCargar({ onAbrirSelector }: { onAbrirSelector: () => void })
         )}
         {(clientes || ventas) && (
           <div className="files">
-            <Tarjeta indice={0} tipo="Clientes" archivo={clientes?.archivo}>{tarjetaClientes}</Tarjeta>
-            <Tarjeta indice={1} tipo="Ventas por documento" archivo={ventas?.archivo}>{tarjetaVentas}</Tarjeta>
+            <Tarjeta indice={0} tipo={clientes && !clientes.documentos ? 'Clientes' : 'Facturas por cliente'} archivo={clientes?.archivo}>{tarjetaClientes}</Tarjeta>
+            <Tarjeta indice={1} tipo="Productos por documento" archivo={ventas?.archivo}>{tarjetaVentas}</Tarjeta>
           </div>
         )}
       </div>
       <div className="footer surface-t">
         <span className="hint">
           {archivosListos
-            ? todoAsignado ? 'El ERP trajo el cliente de cada factura: pasas directo a la salida' : 'Siguiente: decir de quién es cada factura'
+            ? todoAsignado
+              ? 'Cada factura ya tiene su cliente: pasas directo a la salida'
+              : pendientes.length < facturas.length
+                ? `Siguiente: ${plural(pendientes.length, 'factura sin cliente en el reporte, asígnala', 'facturas sin cliente en el reporte, asígnalas')} a mano`
+                : 'Siguiente: decir de quién es cada factura'
             : clientes || ventas ? 'Falta el otro archivo' : 'Empieza cargando los archivos del día'}
         </span>
         <span className="grow" />

@@ -21,6 +21,8 @@ export interface ClientesDelDia {
   archivo: string;
   fecha: string | null;
   clientes: Cliente[];
+  /** Solo si el reporte relaciona cada factura con su cliente ("Ventas Por Documento"). */
+  documentos?: { documento: string; cliente: Cliente }[];
 }
 
 export interface VentasDelDia {

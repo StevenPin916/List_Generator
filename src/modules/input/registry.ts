@@ -2,10 +2,11 @@ import type { DatosDeEntrada } from '../../domain';
 import { ErrorDeEntrada, type AdaptadorEntrada, type Libro } from './contract';
 import { abrirExcel } from './excel-reader';
 import { surtifrutClientes } from './surtifrut-clientes';
+import { surtifrutDocumentos } from './surtifrut-documentos';
 import { surtifrutVentas } from './surtifrut-ventas';
 
 /** Formatos de entrada conocidos. Para soportar un reporte nuevo, agrégalo aquí. */
-export const adaptadores: readonly AdaptadorEntrada[] = [surtifrutClientes, surtifrutVentas];
+export const adaptadores: readonly AdaptadorEntrada[] = [surtifrutDocumentos, surtifrutClientes, surtifrutVentas];
 
 export function identificar(libro: Libro): AdaptadorEntrada | null {
   let mejor: AdaptadorEntrada | null = null;
@@ -25,7 +26,7 @@ export async function leerArchivo(archivo: string, datos: ArrayBuffer | Uint8Arr
   const libro = await abrirExcel(archivo, datos);
   const adaptador = identificar(libro);
   if (!adaptador) {
-    throw new ErrorDeEntrada(`«${archivo}» no parece el reporte de clientes ni el de ventas por documento.`);
+    throw new ErrorDeEntrada(`«${archivo}» no parece el reporte de facturas por cliente ni el de productos por documento.`);
   }
   const datosLeidos = adaptador.leer(libro);
   if (datosLeidos.tipo === 'ventas' && datosLeidos.lineas.length === 0) {

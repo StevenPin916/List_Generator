@@ -2,8 +2,8 @@
 
 App de escritorio para Windows que toma los dos Excel del día que exporta el ERP y genera la **Salida** de alistamiento:
 
-1. **Cargar**: sueltas el reporte de clientes y el de ventas por documento. La app reconoce sola cuál es cuál y verifica que las ventas cuadren con el TOTAL GENERAL.
-2. **Asignar**: dices de quién es cada factura (cliente del día o nombre personalizado). Si un nombre se repite, las facturas quedan `TX`, `TX 2`, `TX 3` por orden de factura.
+1. **Cargar**: sueltas el reporte de productos por documento y el de ventas por documento (una fila por factura con su cliente). La app reconoce sola cuál es cuál, verifica que las ventas cuadren con el TOTAL GENERAL y pone sola el cliente de cada factura.
+2. **Asignar**: solo quedan las facturas que no salen en el reporte de clientes (por ejemplo cotizaciones): dices de quién es cada una (cliente del día o nombre personalizado). Si un nombre se repite, las facturas quedan `TX`, `TX 2`, `TX 3` por orden de factura.
 3. **Generar**: un Excel con 3 hojas:
    - **Items A-Z**: el formato de la Salida manual (Descripcion, Cant, Val, Clientes).
    - **Por cliente**: el pedido de cada factura con subtotal.
@@ -43,7 +43,7 @@ Las dependencias van en una sola dirección: `ui → app → domain`, y `app` us
 
 Solo se toca `src/modules/input/`:
 
-1. Edita el adaptador (`surtifrut-clientes.ts` o `surtifrut-ventas.ts`) o crea uno nuevo que cumpla `AdaptadorEntrada` (`detectar` + `leer`).
+1. Edita el adaptador (`surtifrut-documentos.ts`, `surtifrut-clientes.ts` o `surtifrut-ventas.ts`) o crea uno nuevo que cumpla `AdaptadorEntrada` (`detectar` + `leer`).
 2. Si es nuevo, agrégalo a la lista de `registry.ts`.
 3. Ajusta su fixture en `tests/fixtures/erp.ts` y corre `npm test`.
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { leerArchivo, ErrorDeEntrada } from '../src/modules/input/registry';
 import type { ClientesDelDia, VentasDelDia } from '../src/domain';
-import { LINEAS, TOTAL, libroClientes, libroDesconocido, libroVentas } from './fixtures/erp';
+import { LINEAS, TOTAL, libroClientes, libroDesconocido, libroDocumentos, libroVentas } from './fixtures/erp';
 
 describe('módulo de entrada', () => {
   it('reconoce el reporte de clientes y lo lee sin repetidos', async () => {
@@ -28,6 +28,15 @@ describe('módulo de entrada', () => {
     const d = (await leerArchivo('ventas.xlsx', await libroVentas({ conCliente: true }))) as VentasDelDia;
     const l = d.lineas.find((x) => x.documento === 'FV FE 201')!;
     expect(l.cliente).toEqual({ nombre: 'HOTEL CENTRAL SAS', sucursal: 'NORTE' });
+  });
+
+  it('reconoce el reporte de factura y cliente, sin el código de la sucursal', async () => {
+    const d = (await leerArchivo('documentos.xlsx', await libroDocumentos())) as ClientesDelDia;
+    expect(d.tipo).toBe('clientes');
+    expect(d.fecha).toBe('28/09/2026');
+    expect(d.clientes).toHaveLength(3);
+    expect(d.documentos).toHaveLength(4);
+    expect(d.documentos![1]).toEqual({ documento: 'FV FE201', cliente: { nombre: 'HOTEL CENTRAL SAS', sucursal: 'NORTE' } });
   });
 
   it('rechaza un Excel que no es de ningún formato conocido', async () => {

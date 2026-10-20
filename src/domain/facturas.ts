@@ -1,4 +1,5 @@
-import type { Factura, LineaVenta } from './types';
+import type { Asignacion, ClientesDelDia, Factura, LineaVenta } from './types';
+import { claveCliente, claveDocumento } from './texto';
 
 /** Agrupa las líneas por documento y ordena por serie y número. */
 export function agruparFacturas(lineas: readonly LineaVenta[]): Factura[] {
@@ -26,4 +27,19 @@ export function agruparFacturas(lineas: readonly LineaVenta[]): Factura[] {
   return [...porId.values()].sort(
     (a, b) => a.prefijo.localeCompare(b.prefijo) || a.numero - b.numero,
   );
+}
+
+/**
+ * Cliente de cada factura según el ERP: la columna de cliente del reporte de ventas
+ * o, si no la trae, el reporte que relaciona cada documento con su cliente.
+ * Las facturas que no aparecen en ninguno quedan para asignar a mano.
+ */
+export function asignacionesDelERP(facturas: readonly Factura[], clientes: ClientesDelDia | null): Map<string, Asignacion> {
+  const porDocumento = new Map((clientes?.documentos ?? []).map((d) => [claveDocumento(d.documento), d.cliente]));
+  const asignaciones = new Map<string, Asignacion>();
+  for (const f of facturas) {
+    const c = f.clienteDelERP ?? porDocumento.get(claveDocumento(f.id));
+    if (c) asignaciones.set(f.id, { tipo: 'cliente', clave: claveCliente(c.nombre, c.sucursal) });
+  }
+  return asignaciones;
 }

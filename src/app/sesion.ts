@@ -1,4 +1,4 @@
-import type { Asignacion, ClientesDelDia, VentasDelDia } from '../domain';
+import { agruparFacturas, asignacionesDelERP, type Asignacion, type ClientesDelDia, type VentasDelDia } from '../domain';
 
 /** Estado de la sesión del día. Vive solo en memoria: cada apertura arranca en ceros. */
 export interface Sesion {
@@ -20,7 +20,7 @@ export const SESION_VACIA: Sesion = {
 };
 
 export type Accion =
-  | { tipo: 'cargar'; datos: ClientesDelDia | VentasDelDia; asignacionesERP?: Map<string, Asignacion>; primera: string | null }
+  | { tipo: 'cargar'; datos: ClientesDelDia | VentasDelDia }
   | { tipo: 'ir'; paso: Sesion['paso'] }
   | { tipo: 'seleccionar'; id: string | null }
   | { tipo: 'asignar'; id: string; asignacion: Asignacion | null; siguiente: string | null }
@@ -29,15 +29,14 @@ export type Accion =
 export function reducir(s: Sesion, a: Accion): Sesion {
   switch (a.tipo) {
     case 'cargar': {
-      const nueva: Sesion = {
-        ...s,
-        [a.datos.tipo]: a.datos,
-        paso: 1,
-        historial: [],
-        asignaciones: a.datos.tipo === 'ventas' ? (a.asignacionesERP ?? new Map()) : s.asignaciones,
-      };
-      if (a.datos.tipo === 'ventas') nueva.seleccion = a.primera;
-      return nueva;
+      const nueva: Sesion = { ...s, [a.datos.tipo]: a.datos, paso: 1, historial: [] };
+      if (!nueva.ventas) return nueva;
+      // Ventas nuevas arrancan en ceros; un reporte de clientes nuevo respeta lo ya asignado a mano.
+      // En ambos casos el ERP pone el cliente de cada factura que conozca, en el orden que lleguen.
+      const facturas = agruparFacturas(nueva.ventas.lineas);
+      const asignaciones = new Map(a.datos.tipo === 'ventas' ? [] : s.asignaciones);
+      asignacionesDelERP(facturas, nueva.clientes).forEach((v, id) => asignaciones.set(id, v));
+      return { ...nueva, asignaciones, seleccion: facturas.find((f) => !asignaciones.has(f.id))?.id ?? null };
     }
     case 'ir':
       return { ...s, paso: a.paso };

@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
-  agruparFacturas, claveCliente, construirSalida, numerarRepetidos, quitarCodigo, sugerirAlias,
-  type Asignacion, type LineaVenta,
+  agruparFacturas, asignacionesDelERP, claveCliente, construirSalida, numerarRepetidos, quitarCodigo, sugerirAlias,
+  type Asignacion, type ClientesDelDia, type LineaVenta, type VentasDelDia,
 } from '../src/domain';
+import { leerArchivo } from '../src/modules/input/registry';
+import { libroDocumentos, libroVentas } from './fixtures/erp';
 
 const linea = (documento: string, descripcion: string, cantidad = 1, valorUnit = 1000): LineaVenta => ({
   documento, descripcion, cantidad, valorUnit, dias: 0, total: cantidad * valorUnit,
@@ -107,5 +109,17 @@ describe('construir salida', () => {
     expect(() =>
       construirSalida(null, facturas, incompleto, numerarRepetidos(facturas, incompleto, base), detalle),
     ).toThrow(/FV 3/);
+  });
+});
+
+describe('cliente de cada factura según el ERP', () => {
+  it('cruza el documento aunque un reporte lo escriba pegado y deja a mano lo que no aparece', async () => {
+    const ventas = (await leerArchivo('v.xlsx', await libroVentas())) as VentasDelDia;
+    const docs = (await leerArchivo('d.xlsx', await libroDocumentos())) as ClientesDelDia;
+    const a = asignacionesDelERP(agruparFacturas(ventas.lineas), docs);
+    expect(a.get('FV FE 201')).toEqual({ tipo: 'cliente', clave: claveCliente('HOTEL CENTRAL SAS', 'NORTE') });
+    expect(a.get('FV FE 205')).toEqual({ tipo: 'cliente', clave: claveCliente('RESTAURANTE EL FOGON SAS', '') });
+    expect(a.has('COT 100')).toBe(false);
+    expect(a.size).toBe(4);
   });
 });
